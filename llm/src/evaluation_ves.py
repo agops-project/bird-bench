@@ -6,6 +6,7 @@ import numpy as np
 import argparse
 import sqlite3
 import multiprocessing as mp
+from agent_copilot import aco_launch
 from func_timeout import func_timeout, FunctionTimedOut
 import time
 import math
@@ -99,8 +100,9 @@ def package_sqls(sql_path, db_root_path, mode='gpt', data_mode='dev'):
 def run_sqls_parallel(sqls, db_places, num_cpus=1, iterate_num=100, meta_time_out=30.0):
     pool = mp.Pool(processes=num_cpus)
     for i,sql_pair in enumerate(sqls):
-        predicted_sql, ground_truth = sql_pair
-        pool.apply_async(execute_model, args=(predicted_sql, ground_truth, db_places[i], i, iterate_num, meta_time_out), callback=result_callback)
+        with aco_launch("bird-run"):
+            predicted_sql, ground_truth = sql_pair
+            pool.apply_async(execute_model, args=(predicted_sql, ground_truth, db_places[i], i, iterate_num, meta_time_out), callback=result_callback)
     pool.close()
     pool.join()
 
