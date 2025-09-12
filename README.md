@@ -1,7 +1,7 @@
 ## Getting Started with agent-copilot on BIRD-bench
 1. Download the BIRD datasets [here](https://bird-bench.github.io/) and place the unzipped files in `llm/data/`. You may need to rename some files to match the format of this harness. At mininum, make sure you have the `dev` data.
 2. Make sure you have the packages in `llm/requirements.txt` installed.
-3. Build your workflow in `llm/workflow/`. The final output of your workflow should be a JSON file in the same format as the example `llm/exp_result/example/predict_dev.json`.
+3. Build your workflow in `llm/workflow/` (running it using `aco-launch`). The final output of your workflow should be a JSON file in the same format as the example `llm/exp_result/example/predict_dev.json`.
 4. Evaluate your workflow by running the following commands:
 ```bash
 cd llm

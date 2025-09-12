@@ -6,7 +6,7 @@ import numpy as np
 import argparse
 import sqlite3
 import multiprocessing as mp
-from agent_copilot import aco_launch
+from runner.context_manager import aco_launch
 from func_timeout import func_timeout, FunctionTimedOut
 import time
 import math
