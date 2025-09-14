@@ -1,0 +1,4 @@
+{
+  "0": "SELECT COUNT(CASE WHEN Currency = 'EUR' THEN 1 END) / COUNT(CASE WHEN Currency = 'CZK' THEN 1 END) AS ratio_of_customers FROM debit_card_specializing;\t----- bird -----\tdebit_card_specializing",
+  "1": "SELECT Name FROM debit_card_specializing WHERE YearMonth BETWEEN 201201 AND 201212 ORDER BY Consumption LIMIT 1;\t----- bird -----\tdebit_card_specializing"
+}
