@@ -2,11 +2,11 @@ import sys
 import json
 import argparse
 import sqlite3
-import multiprocessing as mp
+import concurrent.futures
 import tempfile
 import os
 import shutil
-# from runner.context_manager import aco_launch
+import aco
 from func_timeout import func_timeout, FunctionTimedOut
 
 def load_json(dir):
@@ -33,23 +33,25 @@ def execute_sql(predicted_sql,ground_truth, db_path):
 
 
 
-def execute_model(predicted_sql,ground_truth, db_place, idx, meta_time_out):
-    try:
-        res = func_timeout(meta_time_out, execute_sql,
-                                  args=(predicted_sql, ground_truth, db_place))
-    except KeyboardInterrupt:
-        sys.exit(0)
-    except FunctionTimedOut:
-        result = [(f'timeout',)]
-        res = 0
-    except Exception as e:
-        result = [(f'error',)]  # possibly len(query) > 512 or not executable
-        res = 0
-    # print(result)
-    # result = str(set([ret[0] for ret in result]))
-    result = {'sql_idx': idx, 'res': res}
-    # print(result)
-    return result
+def execute_single_query(predicted_sql, ground_truth, db_place, idx, meta_time_out):
+    """Execute a single SQL query pair in its own context (threaded)."""
+    with aco.launch(run_name=f"Query {idx}"):
+        try:
+            res = func_timeout(meta_time_out, execute_sql,
+                                      args=(predicted_sql, ground_truth, db_place))
+            # Log success/failure for this query
+            aco.log(success=bool(res))
+        except KeyboardInterrupt:
+            sys.exit(0)
+        except FunctionTimedOut:
+            res = 0
+            aco.log(success=False)
+        except Exception as e:
+            res = 0
+            aco.log(success=False)
+        
+        result = {'sql_idx': idx, 'res': res}
+        return result
 
 
 def package_sqls(sql_path, db_root_path, mode='gpt', data_mode='dev'):
@@ -76,14 +78,18 @@ def package_sqls(sql_path, db_root_path, mode='gpt', data_mode='dev'):
 
     return clean_sqls, db_path_list
 
-def run_sqls_parallel(sqls, db_places, num_cpus=1, meta_time_out=30.0):
-    pool = mp.Pool(processes=num_cpus)
-    for i,sql_pair in enumerate(sqls):
-        # with aco_launch("bird-run"):  # Removed ACO dependency
-        predicted_sql, ground_truth = sql_pair
-        pool.apply_async(execute_model, args=(predicted_sql, ground_truth, db_places[i], i, meta_time_out), callback=result_callback)
-    pool.close()
-    pool.join()
+def run_sqls_parallel(sqls, db_places, max_workers=8, meta_time_out=30.0):
+    """Run SQL evaluations in parallel using ThreadPoolExecutor."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+        for i, sql_pair in enumerate(sqls):
+            predicted_sql, ground_truth = sql_pair
+            future = executor.submit(execute_single_query, predicted_sql, ground_truth, db_places[i], i, meta_time_out)
+            futures.append(future)
+        
+        results = [f.result() for f in futures]
+    
+    return results
 
 def sort_results(list_of_dicts):
   return sorted(list_of_dicts, key=lambda x: x['sql_idx'])
@@ -94,7 +100,9 @@ def compute_acc_by_diff(exec_results,diff_json_path):
     contents = load_json(diff_json_path)
     simple_results, moderate_results, challenging_results = [], [], []
 
-    for i,content in enumerate(contents):
+    # Only process as many questions as we have results for
+    for i in range(min(len(contents), len(exec_results))):
+        content = contents[i]
         if content['difficulty'] == 'simple':
             simple_results.append(exec_results[i])
 
@@ -128,7 +136,7 @@ if __name__ == '__main__':
     args_parser.add_argument('--ground_truth_path', type=str, default='data/')
     args_parser.add_argument('--data_mode', type=str, default='dev')
     args_parser.add_argument('--db_root_path', type=str, default='data/dev_databases/')
-    args_parser.add_argument('--num_cpus', type=int, default=1)
+    args_parser.add_argument('--max_workers', type=int, default=8, help='Number of worker threads for parallel processing')
     args_parser.add_argument('--meta_time_out', type=float, default=30.0)
     args_parser.add_argument('--mode_gt', type=str, default='gt')
     args_parser.add_argument('--mode_predict', type=str, default='gpt')
@@ -187,9 +195,11 @@ if __name__ == '__main__':
                                                data_mode=args.data_mode)
 
         query_pairs = list(zip(pred_queries,gt_queries))
-        run_sqls_parallel(query_pairs, db_places=db_paths, num_cpus=args.num_cpus, meta_time_out=args.meta_time_out)
+        print(f"Processing {len(query_pairs)} query pairs...")
+        exec_result = run_sqls_parallel(query_pairs, db_places=db_paths, max_workers=args.max_workers, meta_time_out=args.meta_time_out)
         exec_result = sort_results(exec_result)
         
+        print(f"Got {len(exec_result)} execution results")
         print('start calculate')
         simple_acc, moderate_acc, challenging_acc, acc, count_lists = \
             compute_acc_by_diff(exec_result,args.diff_json_path)
