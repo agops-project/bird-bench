@@ -31,8 +31,6 @@ def execute_sql(predicted_sql,ground_truth, db_path):
         res = 1
     return res
 
-
-
 def execute_single_query(predicted_sql, ground_truth, db_place, idx, meta_time_out):
     """Execute a single SQL query pair in its own context (threaded)."""
     with aco.launch(run_name=f"Query {idx}"):
