@@ -20,35 +20,21 @@ def generate_single_sql_subprocess(index, use_develop=True):
             cmd = ["develop", "workflow/main.py", f"--sample_id={index}"]
         else:
             cmd = ["python", "-m", "workflow.main", f"--sample_id={index}"]
-            
-        # Prepare environment variables: copy current env and add session ID
-        env = os.environ.copy()
-        env["AGENT_COPILOT_SESSION_ID"] = str(index)
-        
-        # Run the subprocess with the modified environment
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
-        
+                    
+        # Run the develop subprocess
+        print(f"Running sample {index} with command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, text=True, timeout=300) #, env=env)
+                
         if result.returncode != 0:
-            raise Exception(f"Subprocess failed: {result.stderr}")
+            print(f"Sample {index} failed with return code {result.returncode}")
+            raise Exception(f"Subprocess failed with return code {result.returncode}")
         
-        # Parse the result
-        output_lines = result.stdout.strip().split('\n')
-        prediction_line = None
-        evaluation_result = None
-        
-        for line in output_lines:
-            if line.startswith("PREDICTION:"):
-                prediction_line = line[11:]  # Remove "PREDICTION:" prefix
-            elif line.startswith("EVALUATION_RESULT:"):
-                evaluation_result = int(line[18:])  # Remove "EVALUATION_RESULT:" prefix
-        
-        if not prediction_line:
-            raise Exception(f"No prediction found in output: {result.stdout}")
+        print(f"Sample {index}: Completed successfully")
         
         return {
             'index': index, 
-            'prediction': prediction_line,
-            'evaluation_result': evaluation_result if evaluation_result is not None else 0
+            'prediction': "",
+            'evaluation_result': 0
         }
     
     except Exception as e:
@@ -102,16 +88,6 @@ def main():
     for result in results:
         final_predictions[str(result['index'])] = result['prediction']
         evaluation_results[str(result['index'])] = result['evaluation_result']
-    
-    # Calculate and display accuracy
-    total_correct = sum(evaluation_results.values())
-    total_queries = len(evaluation_results)
-    accuracy = total_correct / total_queries * 100 if total_queries > 0 else 0
-    
-    print(f"\nEvaluation Results:")
-    print(f"Total queries: {total_queries}")
-    print(f"Correct: {total_correct}")
-    print(f"Accuracy: {accuracy:.2f}%")
     
     # Ensure output directory exists
     os.makedirs(args.output_dir, exist_ok=True)

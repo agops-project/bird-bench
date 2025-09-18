@@ -3,7 +3,7 @@ import os
 import argparse
 import sqlite3
 from func_timeout import func_timeout, FunctionTimedOut
-from workflow.example import generate_sql_with_openai
+from .example import example1, example2
 import aco
 
 def load_sample_questions(json_path, num_samples=5):
@@ -58,6 +58,7 @@ def get_ground_truth_sql(sample_id, data_dir="data/"):
 
 
 if __name__ == "__main__":
+    print("HEREHERE")
 
     parser = argparse.ArgumentParser(description='Process single SQL query and evaluate')
     parser.add_argument('--sample_id', type=int, required=True, help='Sample ID to process (0-indexed)')
@@ -68,46 +69,42 @@ if __name__ == "__main__":
     
     sample_id = args.sample_id
 
-    try:
-        # Load the specific question
-        input_path = os.path.join(args.data_dir, "mini_dev_sqlite.json")
-        questions = load_sample_questions(input_path, num_samples=1000)  # Load enough to get our sample
-        
-        if sample_id >= len(questions):
-            print(f"Error: sample_id {sample_id} is out of range (0-{len(questions)-1})")
-            exit(1)
-        
-        question_data = questions[sample_id]
-        
-        # Generate SQL using OpenAI
-        sql_query = generate_sql_with_openai(
-            question_data['question'], 
-            question_data['evidence'], 
-            question_data['db_id']        
-        )
-        
-        # Clean up any markdown formatting
-        if sql_query.startswith('```sql'):
-            sql_query = sql_query.replace('```sql\n', '').replace('```', '').strip()
-        sql_query = sql_query.replace('\n', ' ').strip()
-        
-        print(f"Generated SQL for question {sample_id}: {sql_query}")
-        
-        # Get ground truth SQL and database info
-        ground_truth_sql, db_name = get_ground_truth_sql(sample_id, args.data_dir)
-        db_path = os.path.join(args.db_root_path, db_name, f"{db_name}.sqlite")
-        
-        # Evaluate the query
-        result = evaluate_single_query(sql_query, ground_truth_sql, db_path, sample_id, args.meta_time_out)
-        
-        # Log success/failure
-        aco.log(success=bool(result))
-        
-        # Format prediction for output (compatible with existing format)
-        formatted_prediction = f"{sql_query}\t----- bird -----\t{question_data['db_id']}"
-        print(f"PREDICTION:{formatted_prediction}")
-        print(f"EVALUATION_RESULT:{result}")
-        
-    except Exception as e:
-        print(f"Error processing sample {sample_id}: {e}")
+    # Load the specific question
+    input_path = os.path.join(args.data_dir, "mini_dev_sqlite.json")
+    questions = load_sample_questions(input_path, num_samples=1000)  # Load enough to get our sample
+    
+    if sample_id >= len(questions):
+        print(f"Error: sample_id {sample_id} is out of range (0-{len(questions)-1})")
         exit(1)
+    
+    question_data = questions[sample_id]
+    
+    # Generate SQL using OpenAI
+    print("GOING TO QUERY EXAMPLE1")
+    sql_query = example1(
+        question_data['question'], 
+        question_data['evidence'], 
+        question_data['db_id']        
+    )
+    
+    # Clean up any markdown formatting
+    if sql_query.startswith('```sql'):
+        sql_query = sql_query.replace('```sql\n', '').replace('```', '').strip()
+    sql_query = sql_query.replace('\n', ' ').strip()
+    
+    print(f"Generated SQL for question {sample_id}: {sql_query}")
+    
+    # Get ground truth SQL and database info
+    ground_truth_sql, db_name = get_ground_truth_sql(sample_id, args.data_dir)
+    db_path = os.path.join(args.db_root_path, db_name, f"{db_name}.sqlite")
+    
+    # Evaluate the query
+    result = evaluate_single_query(sql_query, ground_truth_sql, db_path, sample_id, args.meta_time_out)
+    
+    # Log success/failure
+    aco.log(success=bool(result))
+    
+    # Format prediction for output (compatible with existing format)
+    formatted_prediction = f"{sql_query}\t----- bird -----\t{question_data['db_id']}"
+    print(f"PREDICTION:{formatted_prediction}")
+    print(f"EVALUATION_RESULT:{result}")
