@@ -2,7 +2,7 @@
 
 ## Installation
 
-**Downloading / unzipping the data:** If you don't have a data.zip file in the project root, [download it from here](https://1drv.ms/u/c/0a2bf91af9c5e93d/ES4NjfHfw_BBjv5-75n4kSUBK8JIacAVo4BNKwXRBS6vlw?e=ZkDCJ5). Unzip the folder in the project root (so, at `bird-bench/data`).
+**Downloading / unzipping the data:** If you don't have a data.zip file in the project root, [download it from here](https://1drv.ms/u/c/0a2bf91af9c5e93d/Ebetyi37DHRGuSDuAs8CunYByxZfQRldqrj8XmtpH778FQ?e=Ut5bvC). Unzip the folder in the project root (so, at `bird-bench/data`).
 
 **Installing our tool:** In the VS Code marketplace, search for "agops agent copilot" and install the first extension: 
 
