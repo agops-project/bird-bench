@@ -3,7 +3,7 @@ import os
 import argparse
 import sqlite3
 from func_timeout import func_timeout, FunctionTimedOut
-from .example import example1, example2
+from .example import example1
 import aco
 
 def load_sample_questions(json_path, num_samples=5):
@@ -58,8 +58,6 @@ def get_ground_truth_sql(sample_id, data_dir="data/"):
 
 
 if __name__ == "__main__":
-    print("HEREHERE")
-
     parser = argparse.ArgumentParser(description='Process single SQL query and evaluate')
     parser.add_argument('--sample_id', type=int, required=True, help='Sample ID to process (0-indexed)')
     parser.add_argument('--data_dir', type=str, default='data/', help='Data directory')
@@ -80,7 +78,6 @@ if __name__ == "__main__":
     question_data = questions[sample_id]
     
     # Generate SQL using OpenAI
-    print("GOING TO QUERY EXAMPLE1")
     sql_query = example1(
         question_data['question'], 
         question_data['evidence'], 

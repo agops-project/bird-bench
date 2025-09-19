@@ -5,8 +5,7 @@ from aco import untaint_if_needed, get_taint_origins, taint_wrap
 def call_db(sql, db_name):
     """Execute a SQL query on the specified database and return results."""
     taint_origins = get_taint_origins(sql)
-    sql = untaint_if_needed(sql)
-    
+    sql = untaint_if_needed(sql)    
     db_path = get_db_path(db_name)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()

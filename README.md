@@ -16,19 +16,16 @@ Then run `pip install agops-bird`.
 
 Our tool will show you runs of the evaluation set (Sample 0, Sample 1, ...). Correct samples will be shown with a green bar, incorrect ones with a red bar. You can click on samples and inspect the inputs and outputs of LLM calls and calls to the database and even modify them to see what would have happened if the input or output to/from an LLM were different.
 
-Here is a video explaining the tool in more detail. (TODO)
-
 If you have any questions, please reach out to me at `ferdi [dot] kossmann [at] gmail [dot] com`.
 
 ## Developing a workflow
 
 > [!CAUTION]
-> In the light of this user study, you may only invoke LLMs using the OpenAI `responses.create` and `chat.completions.create` API call (also see `workflow/example.py`):
+> In the light of this user study, you may only invoke LLMs using the OpenAI `chat.completions.create` API call (also see `workflow/example.py`):
 >
 > ```
 > from openai import OpenAI
 > client = OpenAI()
-> response = client.responses.create(...)
 > response = client.chat.completions.create(...)
 > ```
 > If you want to make a call to the database, you have to use the `utils.call_db(sql_str)` function (no need to create a connections or cursor). The function will return the same object as an actual call to the SQL DB would. 
