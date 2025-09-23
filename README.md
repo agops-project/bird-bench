@@ -2,15 +2,23 @@
 
 ## Installation
 
-**Downloading / unzipping the data:** If you don't have a data.zip file in the project root, [download it from here](https://1drv.ms/u/c/0a2bf91af9c5e93d/Ebetyi37DHRGuSDuAs8CunYByxZfQRldqrj8XmtpH778FQ?e=Ut5bvC). Unzip the folder in the project root (so, at `bird-bench/data`).
+We recommend Python 3.13 but any version >=3.10 should work.
 
-**Installing our tool:** In the VS Code marketplace, search for "agops agent copilot" and install the first extension: 
+**Installing our tool:** Open VS Code (or a VS Code-based editor like Cursor). In the VS Code marketplace, search for "agops agent copilot" and install the first extension: 
 
 <img src="media_for_readme/marketplace.png" alt="VS Code Marketplace" width="300">
 
-Then run `pip install agops-bird`. 
+Then run `pip install agops-bird`. Also run `pip install openai`.
 
-**Setting up API keys:** Text me at ferdi [dot] kossmann [at] gmail [dot] com. I can provide you with the needed API keys. 
+Run `aco-config` and configure as follows:
+
+1. Check that the default path displayed is the `bird-bench` directory.
+2. Enable telemetry: yes. If you don't have the URL and key below, set telemetry to no.
+3. Telemetry URL: XXX
+4. Telemetry key: XXX
+5. Telemetry username: Enter a name or take default
+
+**Setting up API keys:** Run `export OPENAI_API_KEY=XXX`. If you need a key, text ferdi.kossmann@gmail.com.
 
 ## Using our tool
 
@@ -35,12 +43,23 @@ If you have any questions, please reach out to me at `ferdi [dot] kossmann [at] 
 
 When running our tool, the only difference is that you type `develop script.py` instead of `python script.py`. Practically, this means the following:
 
-When you want to evaluate several samples, run `python run_and_evaluate.py --num_samples X`, which will run the first `X` samples of the benchmark. `run_and_evaluate.py` spawns the workflow runs using the `develop` command, so the actual runs run with our tool.
-
 If you want to evaluate and run an individual sample `X`, do `develop workflow/main.py --sample_id X`.
 
-**Look at the existing example workflow:** 
-1. The code of the workflow is in `workflow/example.py`. It simply calls gpt-3.5 with the input.
-2. The worflow is called from `workflow/main.py`. We recommend to leave much of the logic in `workflow/main.py` the same and use it to call your workflow.
+When you want to evaluate several samples, run `python run_and_evaluate.py --num_samples X`, which will run the first `X` samples of the benchmark. `run_and_evaluate.py` spawns the workflow runs using the `develop` command, so the workflows are run with our tool.
+
+**Getting started:** 
+1. Run `python run_and_evaluate.py` to process all 40 samples in the benchmark. You should see the following output:
+   
+![Get Started](media_for_readme/get_started1.png)
+
+2. You should be able to hover over nodes in the graph (which consists of a single node), and edit the input or output. If you click on the green rerun button, the workflow will rerun with the changes you made. This allows you to ask "what-if questions" (what if the input/output would have been different?).
+
+![Get Started](media_for_readme/get_started2.png)
+
+3. If you click on the eraser symbol, all your input/output edits will be removed and the workflow is run as defined in the code. 
+
+4. The code of the workflow is in `workflow/example.py`. It simply calls gpt-3.5 with the input.
+   
+5. The workflow is called from `workflow/main.py`. We recommend to leave much of the logic in `workflow/main.py` the same and use it to call your workflow.
 
 **Understanding correctness**: In the list view at the left in the UI, samples that failed the benchmark test are shown through a red bar. The ones that passed through a green bar.

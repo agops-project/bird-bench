@@ -3,7 +3,6 @@ import os
 import argparse
 import concurrent.futures
 import subprocess
-import sys
 
 
 def load_sample_questions(json_path, num_samples=5):
@@ -24,13 +23,7 @@ def generate_single_sql_subprocess(index, use_develop=True):
         # Run the develop subprocess
         print(f"Running sample {index} with command: {' '.join(cmd)}")
         result = subprocess.run(cmd, text=True, timeout=300) #, env=env)
-                
-        if result.returncode != 0:
-            print(f"Sample {index} failed with return code {result.returncode}")
-            raise Exception(f"Subprocess failed with return code {result.returncode}")
-        
-        print(f"Sample {index}: Completed successfully")
-        
+
         return {
             'index': index, 
             'prediction': "",
@@ -39,15 +32,18 @@ def generate_single_sql_subprocess(index, use_develop=True):
     
     except Exception as e:
         print(f"Error in subprocess for sample {index}: {e}")
-        raise
+        return {
+            'index': index, 
+            'prediction': "",
+            'evaluation_result': 0
+        }
 
 
 def main():
     parser = argparse.ArgumentParser(description='Generate SQL predictions for BIRD benchmark')
-    parser.add_argument('--num_samples', type=int, default=5, help='Number of samples to process')
+    parser.add_argument('--num_samples', type=int, default=40, help='Number of samples to process')
     parser.add_argument('--output_dir', type=str, default='predictions/', help='Output directory for predictions')
     parser.add_argument('--max_workers', type=int, default=8, help='Number of worker processes for parallel processing')
-    parser.add_argument('--sample_id', type=int, default=-1, help='Run only the specific sample ID (0-indexed), or -1 for all samples')
     parser.add_argument('--use_python', action='store_true', help='Use python command instead of develop command')
     args = parser.parse_args()
         
@@ -60,15 +56,8 @@ def main():
     questions = load_sample_questions(input_path, num_samples=args.num_samples)
     
     # Determine which samples to process
-    if args.sample_id >= 0:
-        if args.sample_id >= len(questions):
-            print(f"Error: sample_id {args.sample_id} is out of range (0-{len(questions)-1})")
-            return
-        sample_indices = [args.sample_id]
-        print(f"Generating SQL for sample {args.sample_id} only...")
-    else:
-        sample_indices = list(range(len(questions)))
-        print(f"Generating SQL for {len(questions)} questions using {args.max_workers} subprocess workers...")
+    sample_indices = list(range(len(questions)))
+    print(f"Generating SQL for {len(questions)} questions using {args.max_workers} subprocess workers...")
     
     # Always use develop command by default, unless --use_python flag is passed
     use_develop = not args.use_python
@@ -78,7 +67,7 @@ def main():
         futures = [executor.submit(generate_single_sql_subprocess, idx, use_develop) for idx in sample_indices]
         results = [f.result() for f in futures]
     
-    print(f"Successfully completed {len(results)} tasks using subprocess approach.")
+    print(f"Ran {len(results)} tasks using subprocess approach.")
     
     # Sort results by index and convert to expected format
     results.sort(key=lambda x: x['index'])

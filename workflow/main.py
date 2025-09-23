@@ -2,7 +2,6 @@ import json
 import os
 import argparse
 import sqlite3
-from func_timeout import func_timeout, FunctionTimedOut
 from .example import example1
 import aco
 
@@ -35,9 +34,6 @@ def evaluate_single_query(predicted_sql, ground_truth, db_path, sample_id, meta_
         res = func_timeout(meta_time_out, execute_sql,
                           args=(predicted_sql, ground_truth, db_path))
         return res
-    except FunctionTimedOut:
-        print(f"Query timed out after {meta_time_out} seconds")
-        return 0
     except Exception as e:
         print(f"Error evaluating query: {e}")
         return 0
@@ -102,6 +98,5 @@ if __name__ == "__main__":
     aco.log(success=bool(result))
     
     # Format prediction for output (compatible with existing format)
-    formatted_prediction = f"{sql_query}\t----- bird -----\t{question_data['db_id']}"
-    print(f"PREDICTION:{formatted_prediction}")
-    print(f"EVALUATION_RESULT:{result}")
+    print(f"PREDICTED QUERY:\n{sql_query}")
+    print(f"EVALUATION_RESULT: {bool(result)}")
