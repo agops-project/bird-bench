@@ -3,6 +3,8 @@ import os
 import argparse
 import sqlite3
 from .example import example1
+from .video import video_example
+from .utils import call_db
 import aco
 
 def load_sample_questions(json_path, num_samples=5):
@@ -12,27 +14,37 @@ def load_sample_questions(json_path, num_samples=5):
     return data[:num_samples]
 
 
-def execute_sql(predicted_sql, ground_truth, db_path):
-    """Execute SQL queries and compare results."""
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute(predicted_sql)
-    predicted_res = cursor.fetchall()
-    cursor.execute(ground_truth)
-    ground_truth_res = cursor.fetchall()
-    conn.close()
+def execute_sql(predicted_sql, ground_truth, db_name):
+    """Execute SQL queries and compare results using call_db function."""
+    predicted_res = None
+    ground_truth_res = None
     
+    # Execute ground truth SQL and label it as "DB gold" - always execute regardless of predicted result
+    try:
+        ground_truth_res = call_db(ground_truth, db_name, "DB gold")
+    except Exception as e:
+        print(f"Ground truth SQL failed: {e}")
+    
+
+    # Execute predicted SQL and label it as "DB predicted" 
+    try:
+        predicted_res = call_db(predicted_sql, db_name, "DB predicted")
+    except Exception as e:
+        print(f"Predicted SQL failed: {e}")
+    
+    # Compare results only if both succeeded
     res = 0
-    if set(predicted_res) == set(ground_truth_res):
-        res = 1
+    if predicted_res is not None and ground_truth_res is not None:
+        if set(predicted_res) == set(ground_truth_res):
+            res = 1
+    
     return res
 
 
-def evaluate_single_query(predicted_sql, ground_truth, db_path, sample_id, meta_time_out=30.0):
+def evaluate_single_query(predicted_sql, ground_truth, db_name, sample_id, meta_time_out=30.0):
     """Evaluate a single SQL query."""
     try:
-        res = func_timeout(meta_time_out, execute_sql,
-                          args=(predicted_sql, ground_truth, db_path))
+        res = execute_sql(predicted_sql, ground_truth, db_name)
         return res
     except Exception as e:
         print(f"Error evaluating query: {e}")
@@ -74,7 +86,7 @@ if __name__ == "__main__":
     question_data = questions[sample_id]
     
     # Generate SQL using OpenAI
-    sql_query = example1(
+    sql_query = video_example(
         question_data['question'], 
         question_data['evidence'], 
         question_data['db_id']        
@@ -84,19 +96,12 @@ if __name__ == "__main__":
     if sql_query.startswith('```sql'):
         sql_query = sql_query.replace('```sql\n', '').replace('```', '').strip()
     sql_query = sql_query.replace('\n', ' ').strip()
-    
-    print(f"Generated SQL for question {sample_id}: {sql_query}")
-    
+        
     # Get ground truth SQL and database info
     ground_truth_sql, db_name = get_ground_truth_sql(sample_id, args.data_dir)
-    db_path = os.path.join(args.db_root_path, db_name, f"{db_name}.sqlite")
     
     # Evaluate the query
-    result = evaluate_single_query(sql_query, ground_truth_sql, db_path, sample_id, args.meta_time_out)
+    result = evaluate_single_query(sql_query, ground_truth_sql, db_name, sample_id, args.meta_time_out)
     
     # Log success/failure
     aco.log(success=bool(result))
-    
-    # Format prediction for output (compatible with existing format)
-    print(f"PREDICTED QUERY:\n{sql_query}")
-    print(f"EVALUATION_RESULT: {bool(result)}")
