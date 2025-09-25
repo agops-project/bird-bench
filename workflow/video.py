@@ -2,7 +2,7 @@ import time
 import os
 import sqlite3
 from openai import OpenAI
-from .utils import get_db_path
+from .utils import call_db, get_db_path
 
 # Set up OpenAI client
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
@@ -71,6 +71,42 @@ Then, someone commented the following:
 
 You now need to combine these answers into a comprehensive list. What are the columns and tables needed to answer the query? Be clear and output all relevant columns and tables.
 """
+
+REVISE_FINAL_OUTPUT = """There's a discussion on how to write a SQL query. The query should answer the following question:
+
+{query}
+
+First, someone ran this query against the {db_name} database using the following SQL statement:
+
+{sql}
+
+which renders this answer:
+
+{answer}
+
+Then, someone criticized this SQL statement as follows:
+
+{sql_critique}
+
+Given this discussion, your job is now to output the final SQL statement that should be run. Only output the right query and nothing else.
+"""
+
+JUDGE_ANSWER_PROMPT = """Your given the following query:
+
+{query}
+
+This query is run against the {db_name} database using the following SQL statement:
+
+{sql}
+
+which renders this answer:
+
+{answer}
+
+First assess whether this matches, the expected output of the question. Think step by step and explain why it matches the expected output or doesn't. Pay special attention to what columns are output as the question may be nuanced on what columns it asks for.
+
+Then, based on your assessment, output the SQL query that you think is correct. Again, pay special attention to what columns you output."""
+
 
 def fix_sql_syntax(sql_query):
     """Fix if LLM misformatted the SQL query."""
@@ -162,7 +198,6 @@ def call_llm(prompt):
 
 def video_example(question, evidence, db_id):
     """Generate SQL using OpenAI API.""" 
-
     schemas = get_database_schema(db_id)
     extract_schema_prompt = EXTRACT_SCHEMA_PROMPT.format(query=question, db_name=db_id, schemas=schemas)
     relevant_columns = call_llm(extract_schema_prompt)
@@ -173,7 +208,15 @@ def video_example(question, evidence, db_id):
     prompt = FINAL_EXTRACT.format(query=question, schema=schemas, first_answer=relevant_columns, second_answer=critic)
     final_schema = call_llm(prompt)
 
-    generate_sql_prompt = GENERATE_SQL_PROMPT.format(query=question, db_name=db_id, hint=evidence, relevant_columns=final_schema)
-    sql = call_llm(generate_sql_prompt)
+    prompt = GENERATE_SQL_PROMPT.format(query=question, db_name=db_id, hint=evidence, relevant_columns=final_schema)
+    sql = call_llm(prompt)
+    sql = fix_sql_syntax(sql)
+
+    answer = call_db(sql, db_id, label="Test query")
+    prompt = JUDGE_ANSWER_PROMPT.format(query=question, db_name=db_id, sql=sql, answer=answer)
+    judge_sql = call_llm(prompt)
+    
+    prompt = REVISE_FINAL_OUTPUT.format(query=question, db_name=db_id, sql=sql, answer=answer, sql_critique=judge_sql)
+    sql = call_llm(prompt)
     sql = fix_sql_syntax(sql)
     return sql
